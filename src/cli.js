@@ -1,12 +1,47 @@
+#!/usr/bin/env node
 import chalk from 'chalk';
+import fs from 'fs';
 import getFile from "./index.js";
-
+import listaValidada from './http-validacao.js';
 
 const caminho = process.argv;
 
-async function processaTexto(caminho){
-    const resultado = await getFile(caminho[2]);
-    console.log(chalk.yellow('lista de links'),resultado);
+async function imprimeLista(valida, resultado, identificador = ''){
+    if (valida){
+        console.log(
+            chalk.yellow('Lista validada '), 
+            chalk.black.bgGreen(identificador),
+            await listaValidada(resultado));
+    }else{
+        console.log(
+            chalk.yellow('Lista de Links: '), 
+            chalk.black.bgGreen(identificador),
+            resultado);
+    }
+}
+
+async function processaTexto(argumentos){
+    const caminho = argumentos[2];
+    const valida = argumentos[3] === '--valida';
+
+    try{
+        fs.lstatSync(caminho);
+    }catch (erro) {
+        if(erro.code === 'ENOENT'){
+            console.log('arquivo/diretório não existe')
+            return;
+        }
+    }
+    if (fs.lstatSync(caminho).isFile()){
+        const resultado = await getFile(caminho);
+        imprimeLista(valida, resultado);
+    }else if (fs.lstatSync(caminho).isDirectory()){
+        const arquivos = await fs.promises.readdir(caminho)
+        arquivos.forEach(async (nomeDeArquivo) => {
+            const lista = await getFile(`${caminho}/${nomeDeArquivo}`)
+            imprimeLista(valida, lista, nomeDeArquivo);
+        })
+    }
 }
 
 processaTexto(caminho);
